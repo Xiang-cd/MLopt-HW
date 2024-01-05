@@ -54,7 +54,7 @@
 %% 构造 LASSO 问题
 % 设定随机种子。
 clear;
-seed = 97006855;
+seed = 42;
 ss = RandStream('mt19937ar','Seed',seed);
 RandStream.setGlobalStream(ss);
 %%%
@@ -63,8 +63,8 @@ RandStream.setGlobalStream(ss);
 % $$\displaystyle\min_x \frac{1}{2}\|Ax-b\|_2^2+\mu\|x\|_1.$$
 % 
 % 生成随机的矩阵 $A$ 和向量 $u$ 以使得 $b=Au$。 正则化系数 $\mu=10^{-3}$。 随机迭代初始点。
-m = 512;
-n = 1024;
+m = 1024;
+n = 2048;
 A = randn(m, n);
 u = sprandn(n, 1, 0.1);
 b = A * u;

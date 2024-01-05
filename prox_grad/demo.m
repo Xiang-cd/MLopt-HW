@@ -27,7 +27,7 @@
 %% 构建 LASSO 优化问题
 % 设定随机种子。
 clear;
-seed = 97006855;
+seed = 42;
 ss = RandStream('mt19937ar','Seed',seed);
 RandStream.setGlobalStream(ss);
 %%%
@@ -36,7 +36,7 @@ RandStream.setGlobalStream(ss);
 % $$\min_x \frac{1}{2}\|Ax-b\|_2^2+\mu\|x\|_1,$$
 %
 % 生成随机的矩阵 $A$ 和向量 $u$ 以使得 $b=Au$。给定正则化系数为 |1e-3|。
-m = 512;
+m = 1024;
 n = 1024;
 A = randn(m, n);
 u = sprandn(n, 1, 0.1);
@@ -154,12 +154,14 @@ print(fig, '-depsc','proxg.eps');
 fig = figure;
 semilogy(0:k1-1, data1, '-', 'Color',[0.99 0.1 0.99], 'LineWidth',2);
 hold on
+semilogy(0:k2-1, data2, '-.','Color',[0.8 0.1 0.2], 'LineWidth',1.2);
+hold on
 semilogy(0:k3-1, data3, '-.','Color',[0.99 0.1 0.2], 'LineWidth',1.2);
 hold on
 semilogy(0:k4-1, data4, '--','Color',[0.2 0.1 0.99], 'LineWidth',1.5);
 hold on
 semilogy(0:k5-1, data5, ':','Color',[0.5 0.2 1], 'LineWidth',1.8);
-legend('BB步长的近似点梯度法', 'BB步长的FISTA算法','固定步长的FISTA算法', '固定步长的第二类Nesterov算法');
+legend('BB步长的近似点梯度法', '固定步长近似点梯度算法', 'BB步长的FISTA算法','固定步长的FISTA算法', '固定步长的第二类Nesterov算法');
 ylabel('$(f(x^k) - f^*)/f^*$', 'fontsize', 14, 'interpreter', 'latex');
 xlabel('迭代步');
 print(fig, '-depsc','fproxg.eps');
