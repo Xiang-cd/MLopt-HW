@@ -149,9 +149,6 @@ while k < opts.maxit
     opts1.verbose = opts.verbose > 1;
     opts1.alpha0 = opts.alpha0;
     
-    %%%
-    % 仅当 |opts.method| 为 |'grad_huber'| 时， |opts1.sigma| 给出 Huber 光滑化的范围；
-    if strcmp(opts.method, 'grad_huber'); opts1.sigma = 1e-3*mu_t; end
     
     %%%
     % 调用内层循环函数，记录每一次内层循环的返回信息。
@@ -192,13 +189,8 @@ end
 out.fval = f;
 out.tt = toc(tt);
 out.itr = k;
-%% 辅助函数
-%%%
-% 原始 LASSO 问题的目标函数。
-    function f = Func(A, b, mu0, x)
-        w = A * x - b;
-        f = 0.5 * (w' * w) + mu0 * norm(x, 1);
-    end
+
+
 %%%
 % 函数 $h(x)=\mu\|x\|_1$ 对应的邻近算子 $\mathrm{sign}(x)\max\{|x|-\mu,0\}$。
     function y = prox(x, mu)

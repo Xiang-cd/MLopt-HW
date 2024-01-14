@@ -67,7 +67,8 @@ if ~isfield(opts, 'ftol'); opts.ftol = 1e-8; end
 if ~isfield(opts, 'gtol'); opts.gtol = 1e-14; end
 if ~isfield(opts, 'gamma'); opts.gamma = 1.618; end
 if ~isfield(opts, 'verbose'); opts.verbose = 1; end
-
+if ~isfield(opts, "MCP_gamma"); opts.MCP_gamma = 2; end
+if ~isfield(opts, "MCP_lambda"); opts.MCP_lambda = 1; end
 %%%
 % 迭代准备。
 k = 0;
@@ -84,7 +85,7 @@ z = zeros(n,1);
 %%%
 % 计算并记录起始点的目标函数值。
 fp = inf; nrmC = inf;
-f = Func(A, b, mu, x);
+f = Func(A, b, mu, x, opts.MCP_gamma, opts.MCP_lambda);
 f0 = f;
 out.fvec = f0;
 %%%
@@ -108,18 +109,18 @@ while k < opts.maxit && abs(f - fp) > opts.ftol && nrmC > opts.gtol
     x = R \ (R' \ w);
     %%%
     % 更新 $z$, $z^{k+1}=\arg\min_z 
-    % \left(\mu\|z\|_1+\frac{\sigma}{2}\|x^{k+1}-z+y^k/\sigma\|_2^2\right)$，
+    % \left(\mu * MCP(z)+\frac{\sigma}{2}\|x^{k+1}-z+y^k/\sigma\|_2^2\right)$，
     % 即
     % $z^{k+1}=\mathrm{prox}_{(\mu/\sigma)\|\cdot\|_1}(x^{k+1}+y^k/\sigma)$。
     c = x + y/sm;
-    z = prox(c,mu/sm);
+    z = prox_new(c, opts.MCP_gamma, opts.MCP_lambda, mu);
     %%%
     % 以 $c^{k+1}=\|x^{k+1}-z^{k+1}\|_2$ 表示约束违反度，增广拉格朗日函数对 
     % $y$ 的梯度 $\frac{L_\rho(x,z,y)}{y}=\sigma (x-z)$， 
     % 更新 $y$ 为一步梯度上升, $y^{k+1}=y^k+\gamma\sigma(x^{k+1}-z^{k+1})$。
     % 以 $\|x^{k+1}-z^{k+1}\|_2$ 作为判断停机的依据。
     y = y + opts.gamma * sm * (x - z);
-    f = Func(A, b, mu, x);
+    f = Func(A, b, mu, x, opts.MCP_gamma, opts.MCP_lambda);
     nrmC = norm(x-z,2);
     
     %%%
@@ -141,16 +142,37 @@ end
 %% 辅助函数
 %%%
 % 函数 $h(x)=\mu\|x\|_1$ 对应的邻近算子 $\mathrm{sign}(x)\max\{|x|-\mu,0\}$。
-function y = prox(x, mu)
-y = max(abs(x) - mu, 0);
-y = sign(x) .* y;
+function y = prox(x, MCP_gamma, MCP_lambda)
+    y = max(abs(x) - MCP_lambda, 0);
+    y = sign(x) .* y;
+end
+
+function y = prox_new(x, MCP_gamma, MCP_lambda, mu)
+    ys = max(abs(x) - MCP_lambda * mu, 0);
+    ys = sign(x) .* ys;
+    ys = ys / (1 - mu/MCP_gamma);
+    s_mask = x <= MCP_gamma * MCP_lambda;
+    g_mask = 1 - s_mask;
+    y = s_mask .* ys + g_mask .* x;
 end
 %%%
-% LASSO 问题的目标函数 $f(x)=\frac{1}{2}\|Ax-b\|_2^2+\mu \|x\|_1$。
-function f = Func(A, b, mu, x)
-w = A * x - b;
-f = 0.5 * (w' * w) + mu*norm(x, 1);
+% 原始问题的目标函数。
+function f = Func(A, b, mu0, x, gamma, lambda)
+    w = A * x - b;
+    f = 0.5 * (w' * w) + mu0 * sum(MCP(x, gamma, lambda));
 end
+
+
+
+% MCP 函数
+function g = MCP(x, gamma, lambda)
+    g_mask = abs(x) > gamma * lambda;
+    f_mask = 1 - g_mask;
+    g_part = g_mask * 0.5 * gamma * lambda^2;
+    f_part = f_mask .* (lambda*abs(x) - x.^2 / gamma / 2);
+    g = g_part + f_part;
+end
+
 %% 参考页面
 % 在页面 <demo_admm.html 实例：交替方向乘子法解 LASSO 问题> 中我们展示此算法的一个应用。
 % 另外，对 LASSO 对偶问题的
