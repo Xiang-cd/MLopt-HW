@@ -146,20 +146,53 @@ $$
 
 #### 交替方向乘子法
 
-唯一需要修改的事对于z的更新
+相对于教材中的admm实现，唯一需要修改的事对于z的更新
 
 $z^{k+1}=\arg\min_z 
 \left(\mu MCP(z)+\frac{\sigma}{2}\|x^{k+1}-z+y^k/\sigma\|_2^2\right)$
 
-根据一阶条件可知：
+根据之前的道的z迭代步骤迭代即可，具体而言关键代码如下：
+```matlab
+function y = prox_new(x, MCP_gamma, MCP_lambda, mu)
+    ys = max(abs(x) - MCP_lambda * mu, 0);
+    ys = sign(x) .* ys;
+    ys = ys / (1 - mu/MCP_gamma);
+    s_mask = x <= MCP_gamma * MCP_lambda;
+    g_mask = 1 - s_mask;
+    y = s_mask .* ys + g_mask .* x;
+end
+```
 
-$$
-z^{k+1} =
-\begin{cases} 
-\frac{-\mu + y^{k} + \sigma x^{k+1} }{\sigma - \frac{\mu}{\gamma}}, & \text{if } z^{k+1} > 0 \text{ and } z^{k+1} \leq \gamma, \\ 
-\frac{\mu + y^{k} + \sigma x^{k+1} }{\sigma - \frac{\mu}{\gamma}}, & \text{if } z^{k+1} < 0 \text{ and } -\gamma \leq z^{k+1}, \\
-x^{k+1} + y^{k}/\sigma, & \text{if } |z^{k+1}| > \gamma. 
- \end{cases}
- $$
+超参数如下：
+```
+m = 1024;
+n = 2048;
+mu = 1e-2;
+MCP_gamma = 2;
+MCP_lambda = 1;
+```
 
- 则可以根据条件求解。
+首先在更严格的停机准则下进行试验，将收敛时得到的历史最优函数值作为真实的最优值的参考 $x^*$。再在松的停机准则下进行实验，得到如下优化曲线：
+
+
+![Alt text](./admm/admm.png)
+
+通过可视化解的数值，验证解的稀疏性：
+![sp](./admm/sparse.png)
+
+检查约束违反度：
+```
+mean(abs(A*x - b))
+ans = 1.7512e-06
+```
+约束违反度很低，可见优化过程是正确的。
+
+#### 代码运行
+直接在admm目录下运行`admm.m`即可。
+
+
+
+## 论文分享
+最近阅读了[ADMM-MCP Framework for Sparse Recovery with Global Convergence](https://arxiv.org/abs/1805.00681)。
+
+通过使用最小极大凹罚（MCP）来松弛问题。然后用交替方向乘法器法（ADMM）和采用改进的迭代硬阈值法求解问题。在某些合理的假设下证明了该方法的收敛性。参数还讨论了设置。最后，通过仿真和与几种最先进的算法的比较对所提出的方法进行了验证。
